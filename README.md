@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Greenhouse Monitoring System
 
-## Getting Started
+Smart IoT-based greenhouse monitoring and control system with real-time sensor data visualization and automated actuator control.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Real-time Sensor Monitoring**
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+  - Temperature (DHT11)
+  - Humidity (DHT11)
+  - Soil Moisture
+  - Light Intensity (LDR)
+  - Rain Detection
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+- **Actuator Control**
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+  - Automated roof/glass control (Servo MG996R)
+  - Water pump automation (Relay)
+  - Manual override from web dashboard
 
-## Learn More
+- **Web Dashboard**
 
-To learn more about Next.js, take a look at the following resources:
+  - Live sensor data with auto-update
+  - Historical data charts (24h)
+  - Manual control panel
+  - Responsive design
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **REST API**
+  - Sensor readings endpoints
+  - Actuator control endpoints
+  - WebSocket support (coming soon)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Prerequisites
 
-## Deploy on Vercel
+- Node.js 18+
+- MySQL/MariaDB
+- npm or yarn
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
