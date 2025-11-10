@@ -34,7 +34,11 @@ export function useSensors() {
 export function useLatestReadings(options = {}) {
   return useQuery({
     queryKey: queryKeys.readings.latest,
-    queryFn: readingsApi.getLatest,
+    queryFn: async () => {
+      const response = await readingsApi.getLatest();
+      // Extract data array from API response
+      return response.data || [];
+    },
     refetchInterval: options.refetchInterval ?? 30000, // Default 30s
     staleTime: 10000, // 10 seconds
     ...options,
@@ -44,7 +48,11 @@ export function useLatestReadings(options = {}) {
 export function useHistoricalReadings(params = {}, options = {}) {
   return useQuery({
     queryKey: queryKeys.readings.historical(params),
-    queryFn: () => readingsApi.getHistorical(params),
+    queryFn: async () => {
+      const response = await readingsApi.getHistorical(params);
+      // Extract data array from API response
+      return response.data || [];
+    },
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: options.enabled ?? true,
     ...options,
@@ -56,7 +64,11 @@ export function useHistoricalReadings(params = {}, options = {}) {
 export function useActuators() {
   return useQuery({
     queryKey: queryKeys.actuators,
-    queryFn: actuatorsApi.getAll,
+    queryFn: async () => {
+      const response = await actuatorsApi.getAll();
+      // Extract data array from API response
+      return response.data || [];
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

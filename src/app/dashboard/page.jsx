@@ -47,19 +47,22 @@ export default function Dashboard() {
     const handleWebSocketMessage = (message) => {
       switch (message.type) {
         case "sensor_reading":
-          // Update latest readings cache
+          console.log("[Dashboard] Received sensor reading via WebSocket");
+          // Update last update timestamp
+          setLastUpdate(new Date());
+          // Invalidate queries to refetch latest data
           queryClient.invalidateQueries({
             queryKey: queryKeys.readings.latest,
           });
           queryClient.invalidateQueries({
             queryKey: ["readings", "historical"],
           });
-          setLastUpdate(new Date());
           break;
 
         case "actuator_status":
-          // Update actuator status
-          queryClient.invalidateQueries({ queryKey: queryKeys.actuators });
+          console.log("[Dashboard] Received actuator status via WebSocket");
+          // Invalidate actuator queries
+          queryClient.invalidateQueries({ queryKey: ["actuators"] });
           if (message.data?.actuatorId) {
             queryClient.invalidateQueries({
               queryKey: queryKeys.actuatorStatus(message.data.actuatorId),
@@ -68,14 +71,9 @@ export default function Dashboard() {
           break;
 
         case "command_ack":
-          // Show acknowledgment
-          if (message.data?.success) {
-            toast.success(`Perintah dikonfirmasi oleh ESP8266`);
-          } else {
-            toast.error(
-              `Perintah gagal: ${message.data?.error || "Unknown error"}`
-            );
-          }
+          console.log("[Dashboard] Received command acknowledgment");
+          // Invalidate actuator queries to update state
+          queryClient.invalidateQueries({ queryKey: ["actuators"] });
           break;
       }
     };
@@ -83,80 +81,84 @@ export default function Dashboard() {
     handleWebSocketMessage(lastMessage);
   }, [lastMessage, queryClient]);
 
-  // Parse sensor data from latest readings
+  // Transform latest readings into sensor data object
   const sensorData = useMemo(() => {
-    if (!latestReadings?.data) return null;
+    if (!latestReadings || latestReadings.length === 0) {
+      return {
+        temperature: null,
+        humidity: null,
+        soil: null,
+        light: null,
+        rain: null,
+      };
+    }
 
-    const readings = latestReadings.data;
-    const data = {
-      temperature: null,
-      humidity: null,
-      soilMoisture: null,
-      lightIntensity: null,
-      isRaining: null,
-    };
+    const data = {};
+    latestReadings.forEach((reading) => {
+      const sensorType = reading.sensor.type;
+      // Round values to 1 decimal place for better display
+      const roundedValue =
+        typeof reading.value === "number"
+          ? Math.round(reading.value * 10) / 10
+          : reading.value;
 
-    readings.forEach((reading) => {
-      switch (reading.sensor.type) {
-        case "DHT11_TEMP":
-          data.temperature = reading.value;
-          break;
-        case "DHT11_HUMIDITY":
-          data.humidity = reading.value;
-          break;
-        case "SOIL_MOISTURE":
-          data.soilMoisture = reading.value;
-          break;
-        case "LDR":
-          data.lightIntensity = reading.value;
-          break;
-        case "RAIN":
-          data.isRaining = reading.value === 1;
-          break;
-      }
+      data[sensorType] = {
+        value: roundedValue,
+        unit: reading.sensor.unit,
+        recordedAt: reading.recordedAt,
+      };
     });
 
     return data;
   }, [latestReadings]);
 
   // Parse actuator status
-  const roofActuator = actuators?.data?.find((a) => a.type === "SERVO_MG996R");
-  const pumpActuator = actuators?.data?.find((a) => a.type === "RELAY");
+  const roofActuator = actuators?.find((a) => a.type === "servo");
+  const pumpActuator = actuators?.find((a) => a.type === "relay");
 
   // Format historical data for chart
   const chartData = useMemo(() => {
-    if (!historicalData?.data) return [];
+    if (!historicalData || historicalData.length === 0) return [];
 
-    // Group readings by time
+    // Group readings by time (every 10 minutes)
     const groupedByTime = {};
 
-    historicalData.data.forEach((reading) => {
+    historicalData.forEach((reading) => {
       const time = new Date(reading.recordedAt);
-      const hourKey = `${time.getHours().toString().padStart(2, "0")}:00`;
+      const minutes = Math.floor(time.getMinutes() / 10) * 10; // Round to nearest 10 min
+      const timeKey = `${time.getHours().toString().padStart(2, "0")}:${minutes
+        .toString()
+        .padStart(2, "0")}`;
 
-      if (!groupedByTime[hourKey]) {
-        groupedByTime[hourKey] = {
-          time: hourKey,
+      if (!groupedByTime[timeKey]) {
+        groupedByTime[timeKey] = {
+          time: timeKey,
           suhu: null,
           kelembabanUdara: null,
           kelembabanTanah: null,
         };
       }
 
+      // Take average or last value
       switch (reading.sensor.type) {
-        case "DHT11_TEMP":
-          groupedByTime[hourKey].suhu = reading.value;
+        case "temperature":
+          groupedByTime[timeKey].suhu = Math.round(reading.value * 10) / 10;
           break;
-        case "DHT11_HUMIDITY":
-          groupedByTime[hourKey].kelembabanUdara = reading.value;
+        case "humidity":
+          groupedByTime[timeKey].kelembabanUdara =
+            Math.round(reading.value * 10) / 10;
           break;
-        case "SOIL_MOISTURE":
-          groupedByTime[hourKey].kelembabanTanah = reading.value;
+        case "soil":
+          groupedByTime[timeKey].kelembabanTanah =
+            Math.round(reading.value * 10) / 10;
           break;
       }
     });
 
-    return Object.values(groupedByTime).slice(-24); // Last 24 hours
+    // Sort by time and return last 24 hours
+    return Object.values(groupedByTime)
+      .sort((a, b) => a.time.localeCompare(b.time))
+      .slice(-50); // Last 50 data points (~8 hours if every 10 min)
   }, [historicalData]);
 
   const getSoilMoistureStatus = (value) => {
@@ -273,45 +275,62 @@ export default function Dashboard() {
           <SensorCard
             title="Suhu"
             value={
-              sensorData?.temperature ? `${sensorData.temperature}°C` : "N/A"
+              sensorData?.temperature?.value
+                ? `${sensorData.temperature.value}°C`
+                : "N/A"
             }
             icon={Thermometer}
             iconColor="text-red-500"
           />
           <SensorCard
             title="Kelembaban Udara"
-            value={sensorData?.humidity ? `${sensorData.humidity}%` : "N/A"}
+            value={
+              sensorData?.humidity?.value
+                ? `${sensorData.humidity.value}%`
+                : "N/A"
+            }
             icon={Droplet}
             iconColor="text-blue-500"
           />
           <SensorCard
             title="Kelembaban Tanah"
             value={
-              sensorData?.soilMoisture ? `${sensorData.soilMoisture}%` : "N/A"
+              sensorData?.soil?.value ? `${sensorData.soil.value}%` : "N/A"
             }
             icon={Sprout}
-            status={getSoilMoistureStatus(sensorData?.soilMoisture)}
+            status={
+              sensorData?.soil?.value
+                ? getSoilMoistureStatus(sensorData.soil.value)
+                : "-"
+            }
             iconColor="text-green-600"
           />
           <SensorCard
             title="Intensitas Cahaya"
-            value={sensorData?.lightIntensity || "N/A"}
+            value={
+              sensorData?.light?.value ? `${sensorData.light.value} lux` : "N/A"
+            }
             icon={Sun}
-            status={getLightStatus(sensorData?.lightIntensity)}
+            status={
+              sensorData?.light?.value
+                ? getLightStatus(sensorData.light.value)
+                : "-"
+            }
             iconColor="text-yellow-500"
           />
           <SensorCard
             title="Status Hujan"
             value={
-              sensorData?.isRaining !== null
-                ? sensorData.isRaining
+              sensorData?.rain?.value !== null &&
+              sensorData?.rain?.value !== undefined
+                ? sensorData.rain.value === 1
                   ? "Hujan"
                   : "Tidak Hujan"
                 : "N/A"
             }
             icon={CloudRain}
             iconColor={
-              sensorData?.isRaining ? "text-blue-600" : "text-gray-400"
+              sensorData?.rain?.value === 1 ? "text-blue-600" : "text-gray-400"
             }
           />
         </div>
@@ -319,8 +338,8 @@ export default function Dashboard() {
         {/* Status & Control Panel */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ActuatorStatus
-            roofStatus={roofActuator?.state === "active" ? "OPEN" : "CLOSED"}
-            pumpStatus={pumpActuator?.state === "active" ? "ON" : "OFF"}
+            roofStatus={roofActuator?.state || "CLOSED"}
+            pumpStatus={pumpActuator?.state || "OFF"}
           />
           <ControlPanel
             onRoofOpen={handleOpenRoof}

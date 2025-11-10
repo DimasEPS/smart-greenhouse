@@ -157,9 +157,9 @@ function handleAuth(clientId, data) {
 
 /**
  * Handle sensor reading from ESP8266
- * Broadcast to all web clients
+ * Save to database and broadcast to all web clients
  */
-function handleSensorReading(clientId, data, wss) {
+async function handleSensorReading(clientId, data, wss) {
   const client = clients.get(clientId);
 
   // Verify it's from ESP8266
@@ -169,6 +169,24 @@ function handleSensorReading(clientId, data, wss) {
   }
 
   console.log(`[WS] Sensor reading:`, data);
+
+  // Save to database via API
+  try {
+    const response = await fetch("http://localhost:3000/api/readings/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deviceId: data.deviceId,
+        readings: data.readings,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("[WS] Failed to save readings to database");
+    }
+  } catch (error) {
+    console.error("[WS] Error saving readings:", error.message);
+  }
 
   // Broadcast to all web clients
   broadcastToWebClients({

@@ -24,6 +24,14 @@ export function useWebSocket(url, options = {}) {
   const reconnectTimeoutRef = useRef(null);
   const shouldReconnectRef = useRef(true);
 
+  // Use refs for callbacks to avoid recreating connect function
+  const callbacksRef = useRef({ onOpen, onClose, onError, onMessage });
+
+  // Update callbacks ref when they change
+  useEffect(() => {
+    callbacksRef.current = { onOpen, onClose, onError, onMessage };
+  }, [onOpen, onClose, onError, onMessage]);
+
   // Send message to WebSocket server
   const sendMessage = useCallback((data) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -56,7 +64,7 @@ export function useWebSocket(url, options = {}) {
           })
         );
 
-        if (onOpen) onOpen(event);
+        if (callbacksRef.current.onOpen) callbacksRef.current.onOpen(event);
       };
 
       ws.onclose = (event) => {
@@ -64,36 +72,40 @@ export function useWebSocket(url, options = {}) {
         setIsConnected(false);
         wsRef.current = null;
 
-        if (onClose) onClose(event);
+        if (callbacksRef.current.onClose) callbacksRef.current.onClose(event);
 
         // Attempt reconnection
-        if (
-          shouldReconnectRef.current &&
-          reconnect &&
-          reconnectCount < reconnectAttempts
-        ) {
-          console.log(
-            `[WS] Reconnecting in ${reconnectInterval}ms... (attempt ${
-              reconnectCount + 1
-            }/${reconnectAttempts})`
-          );
-          reconnectTimeoutRef.current = setTimeout(() => {
-            setReconnectCount((prev) => prev + 1);
-            connect();
-          }, reconnectInterval);
+        if (shouldReconnectRef.current && reconnect) {
+          setReconnectCount((prevCount) => {
+            if (prevCount < reconnectAttempts) {
+              console.log(
+                `[WS] Reconnecting in ${reconnectInterval}ms... (attempt ${
+                  prevCount + 1
+                }/${reconnectAttempts})`
+              );
+              reconnectTimeoutRef.current = setTimeout(() => {
+                connect();
+              }, reconnectInterval);
+              return prevCount + 1;
+            } else {
+              console.log("[WS] Max reconnection attempts reached");
+              return prevCount;
+            }
+          });
         }
       };
 
       ws.onerror = (error) => {
         console.error("[WS] Error:", error);
-        if (onError) onError(error);
+        if (callbacksRef.current.onError) callbacksRef.current.onError(error);
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
           setLastMessage(message);
-          if (onMessage) onMessage(message);
+          if (callbacksRef.current.onMessage)
+            callbacksRef.current.onMessage(message);
         } catch (error) {
           console.error("[WS] Error parsing message:", error);
         }
@@ -102,19 +114,9 @@ export function useWebSocket(url, options = {}) {
       wsRef.current = ws;
     } catch (error) {
       console.error("[WS] Connection error:", error);
-      if (onError) onError(error);
+      if (callbacksRef.current.onError) callbacksRef.current.onError(error);
     }
-  }, [
-    url,
-    onOpen,
-    onClose,
-    onError,
-    onMessage,
-    reconnect,
-    reconnectInterval,
-    reconnectAttempts,
-    reconnectCount,
-  ]);
+  }, [url, reconnect, reconnectInterval, reconnectAttempts]);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
@@ -138,7 +140,8 @@ export function useWebSocket(url, options = {}) {
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]); // Only reconnect when URL changes
 
   return {
     isConnected,
