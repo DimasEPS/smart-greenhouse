@@ -1,0 +1,67 @@
+// Greenhouse Monitoring System - Prisma Schema
+// Based on greenhouse.dbml ERD
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Model Sensors - Daftar sensor yang dipantau greenhouse
+model Sensor {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255)
+  type      String   @db.VarChar(100) // temperature | humidity | soil | light | rain
+  unit      String   @db.VarChar(50)  // °C, %, raw, etc.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  readings SensorReading[]
+
+  @@map("sensors")
+}
+
+// Model Sensor Readings - Catatan pembacaan sensor dari NodeMCU
+model SensorReading {
+  id         String   @id @default(uuid())
+  sensorId   String   @map("sensor_id")
+  value      Float
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  @@index([sensorId])
+  @@index([recordedAt])
+  @@map("sensor_readings")
+}
+
+// Model Actuators - Daftar aktuator yang dapat dikontrol
+model Actuator {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255) // Pompa Air, Vent Servo, dll.
+  type      String   @db.VarChar(100) // relay | servo
+  state     String   @db.VarChar(100) // OFF/ON atau posisi sudut servo
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  commands ActuatorCommand[]
+
+  @@map("actuators")
+}
+
+// Model Actuator Commands - Riwayat perintah yang dikirim ke aktuator
+model ActuatorCommand {
+  id         String   @id @default(uuid())
+  actuatorId String   @map("actuator_id")
+  command    String   @db.VarChar(255) // misal: PUMP_ON:10s, VENT:OPEN:90
+  issuedBy   String   @map("issued_by") @db.VarChar(100) // user:web | rule:auto
+  status     String   @db.VarChar(50) // queued | sent | ack | error | expired
+  issuedAt   DateTime @default(now()) @map("issued_at")
+
+  actuator Actuator @relation(fields: [actuatorId], references: [id], onDelete: Cascade)
+
+  @@index([actuatorId])
+  @@index([issuedAt])
+  @@map("actuator_commands")
+}
