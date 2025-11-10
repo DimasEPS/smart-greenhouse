@@ -1,0 +1,43 @@
+Table sensors {
+  id          uuid        [pk]
+  name        varchar(255)
+  type        varchar(100)  // temperature | humidity | soil | light | rain
+  unit        varchar(50)   // °C, %, raw, etc.
+  created_at  timestamp     [default: `CURRENT_TIMESTAMP`]
+
+  Note: 'Daftar sensor yang dipantau greenhouse'
+}
+
+Table sensor_readings {
+  id          uuid        [pk]
+  sensor_id   uuid
+  value       float
+  recorded_at timestamp    [default: `CURRENT_TIMESTAMP`]
+
+  Note: 'Catatan pembacaan sensor dari NodeMCU'
+}
+
+Table actuators {
+  id          uuid        [pk]
+  name        varchar(255)  // Pompa Air, Vent Servo, dll.
+  type        varchar(100)  // relay | servo
+  state       varchar(100)  // OFF/ON atau posisi sudut servo
+  updated_at  timestamp     [default: `CURRENT_TIMESTAMP`]
+
+  Note: 'Daftar aktuator yang dapat dikontrol'
+}
+
+Table actuator_commands {
+  id           uuid        [pk]
+  actuator_id  uuid
+  command      varchar(255)   // misal: PUMP_ON:10s, VENT:OPEN:90
+  issued_by    varchar(100)   // user:web | rule:auto
+  status       varchar(50)    // queued | sent | ack | error | expired
+  issued_at    timestamp      [default: `CURRENT_TIMESTAMP`]
+
+  Note: 'Riwayat perintah yang dikirim ke aktuator'
+}
+
+Ref: sensor_readings.sensor_id > sensors.id
+
+Ref: actuator_commands.actuator_id > actuators.id
