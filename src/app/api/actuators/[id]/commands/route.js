@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { sendCommandToESP8266 } from "@/lib/websocket";
 
 // POST /api/actuators/[id]/commands - Send command to actuator
 export async function POST(request, { params }) {
@@ -82,6 +83,14 @@ export async function POST(request, { params }) {
     await prisma.actuatorCommand.update({
       where: { id: actuatorCommand.id },
       data: { status: "sent" },
+    });
+
+    // Send command to ESP8266 via WebSocket
+    sendCommandToESP8266({
+      commandId: actuatorCommand.id,
+      actuatorId: id,
+      actuatorType: actuator.type,
+      command,
     });
 
     return NextResponse.json(

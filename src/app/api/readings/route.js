@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { broadcastSensorReading } from "@/lib/websocket";
 
 // Helper function to parse time range
 function parseTimeRange(range) {
@@ -149,6 +150,9 @@ export async function POST(request) {
         },
       },
     });
+
+    // Broadcast to WebSocket clients
+    broadcastSensorReading(reading);
 
     return NextResponse.json(
       {

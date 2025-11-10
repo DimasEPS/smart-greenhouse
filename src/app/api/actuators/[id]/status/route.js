@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { broadcastActuatorStatus } from "@/lib/websocket";
 
 // GET /api/actuators/[id]/status - Get actuator status
 export async function GET(request, { params }) {
@@ -103,6 +104,9 @@ export async function PATCH(request, { params }) {
         data: { status: "ack" },
       });
     }
+
+    // Broadcast actuator status to all web clients
+    broadcastActuatorStatus(updatedActuator);
 
     return NextResponse.json({
       success: true,
