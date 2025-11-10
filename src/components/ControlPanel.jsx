@@ -3,9 +3,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Alert, AlertDescription } from "./ui/alert";
-import { DoorOpen, DoorClosed, Power, PowerOff, Info } from "lucide-react";
+import {
+  DoorOpen,
+  DoorClosed,
+  Power,
+  PowerOff,
+  Info,
+  Loader2,
+} from "lucide-react";
 
-export function ControlPanel({ onRoofOpen, onRoofClose, onPumpOn, onPumpOff }) {
+export function ControlPanel({
+  onRoofOpen,
+  onRoofClose,
+  onPumpOn,
+  onPumpOff,
+  isLoading = false,
+}) {
   return (
     <Card className="border-gray-200">
       <CardHeader className="pb-3">
@@ -22,8 +35,13 @@ export function ControlPanel({ onRoofOpen, onRoofClose, onPumpOn, onPumpOff }) {
               variant="default"
               size="sm"
               className="w-full bg-black hover:bg-gray-800 text-white"
+              disabled={isLoading}
             >
-              <DoorOpen className="mr-1.5 h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <DoorOpen className="mr-1.5 h-4 w-4" />
+              )}
               Buka Kaca
             </Button>
             <Button
@@ -31,8 +49,13 @@ export function ControlPanel({ onRoofOpen, onRoofClose, onPumpOn, onPumpOff }) {
               variant="outline"
               size="sm"
               className="w-full"
+              disabled={isLoading}
             >
-              <DoorClosed className="mr-1.5 h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <DoorClosed className="mr-1.5 h-4 w-4" />
+              )}
               Tutup Kaca
             </Button>
           </div>
@@ -46,8 +69,13 @@ export function ControlPanel({ onRoofOpen, onRoofClose, onPumpOn, onPumpOff }) {
               variant="default"
               size="sm"
               className="w-full bg-green-600 hover:bg-green-700 text-white"
+              disabled={isLoading}
             >
-              <Power className="mr-1.5 h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Power className="mr-1.5 h-4 w-4" />
+              )}
               Hidupkan Pompa
             </Button>
             <Button
@@ -55,8 +83,13 @@ export function ControlPanel({ onRoofOpen, onRoofClose, onPumpOn, onPumpOff }) {
               variant="outline"
               size="sm"
               className="w-full"
+              disabled={isLoading}
             >
-              <PowerOff className="mr-1.5 h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <PowerOff className="mr-1.5 h-4 w-4" />
+              )}
               Matikan Pompa
             </Button>
           </div>

@@ -24,20 +24,17 @@ export async function GET() {
           },
         });
 
+        // Flatten structure to match dashboard expectations
         return {
+          id: reading?.id,
+          value: reading?.value,
+          recordedAt: reading?.recordedAt,
           sensor: {
             id: sensor.id,
             name: sensor.name,
             type: sensor.type,
             unit: sensor.unit,
           },
-          reading: reading
-            ? {
-                id: reading.id,
-                value: reading.value,
-                recordedAt: reading.recordedAt,
-              }
-            : null,
         };
       })
     );

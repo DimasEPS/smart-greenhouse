@@ -38,3 +38,4 @@ next-env.d.ts
 /src/generated/prisma
 API_DOCS.md
 WEBSOCKET_DOCS.md
+/scripts
