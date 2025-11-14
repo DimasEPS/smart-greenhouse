@@ -8,9 +8,9 @@ import prisma from "@/lib/prisma";
 import { broadcastActuatorStatus } from "@/lib/websocket";
 
 // GET /api/actuators/[id]/status - Get actuator status
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   try {
-    const { id } = params;
+    const { id } = await context.params; // Next.js 15: params is a Promise
 
     const actuator = await prisma.actuator.findUnique({
       where: { id },
@@ -59,9 +59,9 @@ export async function GET(request, { params }) {
 }
 
 // PATCH /api/actuators/[id]/status - Update actuator status (for ESP8266 to report back)
-export async function PATCH(request, { params }) {
+export async function PATCH(request, context) {
   try {
-    const { id } = params;
+    const { id } = await context.params; // Next.js 15: params is a Promise
     const body = await request.json();
     const { state, commandId } = body;
 

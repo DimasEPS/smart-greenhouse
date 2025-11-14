@@ -14,18 +14,20 @@ export default function QueryProvider({ children }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Stale time: Data considered fresh for 1 minute
-            staleTime: 60 * 1000,
+            // Stale time: Data considered fresh for 10 seconds (real-time dashboard)
+            staleTime: 10 * 1000,
             // Cache time: Keep unused data in cache for 5 minutes
             gcTime: 5 * 60 * 1000,
-            // Refetch on window focus
-            refetchOnWindowFocus: true,
+            // Don't refetch on window focus (to avoid conflicts with refetchInterval)
+            refetchOnWindowFocus: false,
             // Refetch on mount if stale
             refetchOnMount: true,
             // Retry failed requests 1 time
             retry: 1,
-            // Don't refetch on reconnect by default
-            refetchOnReconnect: false,
+            // Refetch on reconnect to ensure fresh data
+            refetchOnReconnect: true,
+            // Keep polling even when browser tab is inactive
+            refetchIntervalInBackground: false,
           },
           mutations: {
             // Retry failed mutations 0 times

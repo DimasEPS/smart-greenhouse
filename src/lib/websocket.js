@@ -271,7 +271,7 @@ export function sendCommandToESP8266(command) {
 
   esp8266Clients.forEach((client) => {
     sendToClient(client.ws, {
-      type: "command_dispatch",
+      type: "actuator_command",
       data: command,
       timestamp: new Date().toISOString(),
     });

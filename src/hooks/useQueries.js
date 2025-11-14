@@ -40,7 +40,8 @@ export function useLatestReadings(options = {}) {
       return response.data || [];
     },
     refetchInterval: options.refetchInterval ?? 30000, // Default 30s
-    staleTime: 10000, // 10 seconds
+    refetchIntervalInBackground: false, // Don't refetch when tab inactive
+    staleTime: 5000, // Consider data stale after 5 seconds
     ...options,
   });
 }
@@ -107,28 +108,36 @@ export function useSendActuatorCommand(options = {}) {
       actuatorsApi.sendCommand(actuatorId, command, issuedBy),
     onMutate: async ({ actuatorId, command }) => {
       // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.actuators });
       await queryClient.cancelQueries({
         queryKey: queryKeys.actuatorStatus(actuatorId),
       });
 
       // Snapshot the previous value
-      const previousStatus = queryClient.getQueryData(
-        queryKeys.actuatorStatus(actuatorId)
-      );
+      const previousActuators = queryClient.getQueryData(queryKeys.actuators);
 
       // Optimistically update to the new value
-      if (previousStatus) {
-        queryClient.setQueryData(
-          queryKeys.actuatorStatus(actuatorId),
-          (old) => ({
-            ...old,
-            state:
-              command === "OPEN" || command === "ON" ? "active" : "inactive",
+      if (previousActuators) {
+        queryClient.setQueryData(queryKeys.actuators, (old) =>
+          old.map((act) => {
+            if (act.id !== actuatorId) return act;
+
+            // Update state based on actuator type and command
+            let newState = act.state;
+            if (act.type === "servo") {
+              if (command === "OPEN") newState = "OPEN";
+              else if (command === "CLOSE") newState = "CLOSED";
+            } else if (act.type === "relay") {
+              if (command === "ON") newState = "ON";
+              else if (command === "OFF") newState = "OFF";
+            }
+
+            return { ...act, state: newState };
           })
         );
       }
 
-      return { previousStatus, actuatorId };
+      return { previousActuators, actuatorId };
     },
     onError: (error, variables, context) => {
       // Rollback on error
@@ -144,12 +153,14 @@ export function useSendActuatorCommand(options = {}) {
     onSuccess: (data, variables, context) => {
       toast.success("Perintah berhasil dikirim");
 
-      // Invalidate and refetch
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.actuatorStatus(variables.actuatorId),
+      // Force refetch actuators list to get latest state from server
+      queryClient.refetchQueries({
+        queryKey: queryKeys.actuators,
       });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.actuatorCommands(variables.actuatorId),
+
+      // Also refetch specific actuator status
+      queryClient.refetchQueries({
+        queryKey: queryKeys.actuatorStatus(variables.actuatorId),
       });
 
       options.onSuccess?.(data, variables, context);

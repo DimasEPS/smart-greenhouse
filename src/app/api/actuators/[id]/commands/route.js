@@ -3,14 +3,17 @@
  * Send command to specific actuator
  */
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendCommandToESP8266 } from "@/lib/websocket";
 
 // POST /api/actuators/[id]/commands - Send command to actuator
-export async function POST(request, { params }) {
+export async function POST(request, context) {
   try {
-    const { id } = params;
+    const { id } = await context.params; // Next.js 15: params is a Promise
     const body = await request.json();
     const { command, issuedBy = "user:web" } = body;
 
@@ -60,17 +63,28 @@ export async function POST(request, { params }) {
       },
     });
 
-    // Parse command to update actuator state
-    // Command format examples: "OPEN", "CLOSE", "ON", "OFF", "ANGLE:90"
+    // Parse command to update actuator state based on actuator type
+    // Servo (roof/glass): OPEN, CLOSED
+    // Relay (pump): ON, OFF
     let newState = actuator.state;
 
-    if (command === "OPEN" || command === "ON") {
-      newState = command === "OPEN" ? "OPEN" : "ON";
-    } else if (command === "CLOSE" || command === "OFF") {
-      newState = command === "CLOSE" ? "CLOSED" : "OFF";
-    } else if (command.startsWith("ANGLE:")) {
-      const angle = command.split(":")[1];
-      newState = `${angle}°`;
+    if (actuator.type === "servo") {
+      // Servo actuator (roof/glass)
+      if (command === "OPEN") {
+        newState = "OPEN";
+      } else if (command === "CLOSE") {
+        newState = "CLOSED";
+      } else if (command.startsWith("ANGLE:")) {
+        const angle = command.split(":")[1];
+        newState = `${angle}°`;
+      }
+    } else if (actuator.type === "relay") {
+      // Relay actuator (pump/motor)
+      if (command === "ON") {
+        newState = "ON";
+      } else if (command === "OFF") {
+        newState = "OFF";
+      }
     }
 
     // Update actuator state
@@ -118,9 +132,9 @@ export async function POST(request, { params }) {
 }
 
 // GET /api/actuators/[id]/commands - Get command history for actuator
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   try {
-    const { id } = params;
+    const { id } = await context.params; // Next.js 15: params is a Promise
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit")) || 20;
 

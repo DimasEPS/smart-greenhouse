@@ -22,7 +22,7 @@ export default function Dashboard() {
   // React Query hooks
   const { data: latestReadings, isLoading: loadingReadings } =
     useLatestReadings({
-      refetchInterval: 30000, // 30 seconds
+      refetchInterval: 10000, // 10 seconds (more responsive)
     });
 
   const { data: actuators, isLoading: loadingActuators } = useActuators();
@@ -44,27 +44,27 @@ export default function Dashboard() {
   useEffect(() => {
     if (!lastMessage) return;
 
-    const handleWebSocketMessage = (message) => {
+    const handleWebSocketMessage = async (message) => {
       switch (message.type) {
         case "sensor_reading":
           console.log("[Dashboard] Received sensor reading via WebSocket");
           // Update last update timestamp
           setLastUpdate(new Date());
-          // Invalidate queries to refetch latest data
-          queryClient.invalidateQueries({
+          // Force refetch queries immediately
+          await queryClient.refetchQueries({
             queryKey: queryKeys.readings.latest,
           });
-          queryClient.invalidateQueries({
+          await queryClient.refetchQueries({
             queryKey: ["readings", "historical"],
           });
           break;
 
         case "actuator_status":
           console.log("[Dashboard] Received actuator status via WebSocket");
-          // Invalidate actuator queries
-          queryClient.invalidateQueries({ queryKey: ["actuators"] });
+          // Force refetch actuator queries
+          await queryClient.refetchQueries({ queryKey: ["actuators"] });
           if (message.data?.actuatorId) {
-            queryClient.invalidateQueries({
+            await queryClient.refetchQueries({
               queryKey: queryKeys.actuatorStatus(message.data.actuatorId),
             });
           }
@@ -72,8 +72,8 @@ export default function Dashboard() {
 
         case "command_ack":
           console.log("[Dashboard] Received command acknowledgment");
-          // Invalidate actuator queries to update state
-          queryClient.invalidateQueries({ queryKey: ["actuators"] });
+          // Force refetch actuator queries to update state
+          await queryClient.refetchQueries({ queryKey: ["actuators"] });
           break;
       }
     };
