@@ -156,17 +156,3 @@ Lihat schema lengkap di `src/db/greenhouse.dbml` atau:
 ```bash
 npx prisma studio
 ```
-
-## 🤝 Contributing
-
-Pull requests are welcome! Untuk perubahan besar, silakan buka issue terlebih dahulu.
-
-## 📄 License
-
-MIT
-
-## 👨‍💻 Author
-
-**Dimas EPS**
-
-- GitHub: [@DimasEPS](https://github.com/DimasEPS)
