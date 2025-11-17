@@ -14,30 +14,79 @@ const SEND_INTERVAL = 5000; // Send data every 5 seconds
 let ws;
 let isConnected = false;
 
-// Sensor value generators (realistic ranges)
+// State untuk simulasi yang lebih realistis
+let timeOffset = 0;
+let temperatureTrend = 28; // Base temperature
+let humidityTrend = 70; // Base humidity
+let soilMoistureTrend = 55; // Base soil moisture
+
+// Sensor value generators (realistic ranges with natural variation)
 function generateTemperature() {
-  return (25 + Math.random() * 10).toFixed(2); // 25-35°C
+  // Simulate natural temperature fluctuation dengan sine wave + random noise
+  const timeOfDay = (Date.now() / 1000 + timeOffset) / 3600; // Hours
+  const dailyCycle = Math.sin((timeOfDay * Math.PI) / 12) * 3; // ±3°C daily variation
+  const randomNoise = (Math.random() - 0.5) * 2; // ±1°C random noise
+  const trend = (Math.random() - 0.5) * 0.1; // Slow drift
+
+  temperatureTrend += trend;
+  temperatureTrend = Math.max(22, Math.min(35, temperatureTrend)); // Keep in realistic range
+
+  const value = temperatureTrend + dailyCycle + randomNoise;
+  return Math.max(20, Math.min(40, value)).toFixed(2);
 }
 
 function generateHumidity() {
-  return (60 + Math.random() * 30).toFixed(2); // 60-90%
+  // Humidity has inverse relationship with temperature
+  const randomWalk = (Math.random() - 0.5) * 3; // ±1.5% change
+  const trend = (Math.random() - 0.5) * 0.2;
+
+  humidityTrend += trend + randomWalk;
+  humidityTrend = Math.max(50, Math.min(95, humidityTrend));
+
+  const noise = (Math.random() - 0.5) * 4;
+  const value = humidityTrend + noise;
+  return Math.max(45, Math.min(100, value)).toFixed(2);
 }
 
 function generateSoilMoisture() {
-  return (30 + Math.random() * 50).toFixed(2); // 30-80%
+  // Soil moisture gradually decreases, jumps up when "watered"
+  const evaporation = -0.3; // Gradual decrease
+  const randomVariation = (Math.random() - 0.5) * 2;
+
+  soilMoistureTrend += evaporation + randomVariation;
+
+  // Simulate watering when too dry
+  if (soilMoistureTrend < 35) {
+    soilMoistureTrend += Math.random() * 25 + 15; // Add water
+    console.log("💧 Simulated watering event");
+  }
+
+  soilMoistureTrend = Math.max(30, Math.min(85, soilMoistureTrend));
+
+  const noise = (Math.random() - 0.5) * 3;
+  const value = soilMoistureTrend + noise;
+  return Math.max(25, Math.min(90, value)).toFixed(2);
 }
 
 function generateLightIntensity() {
   const hour = new Date().getHours();
-  // Simulate day/night cycle
-  if (hour >= 6 && hour <= 18) {
-    return (400 + Math.random() * 600).toFixed(2); // 400-1000 lux (day)
+  const minute = new Date().getMinutes();
+  const timeInHours = hour + minute / 60;
+
+  // Simulate realistic sunlight curve
+  if (timeInHours >= 6 && timeInHours <= 18) {
+    // Parabolic curve for daylight (peaks at noon)
+    const noonOffset = timeInHours - 12;
+    const intensity = 900 - noonOffset * noonOffset * 15; // Peak at noon
+    const clouds = Math.random() * 200 - 100; // Cloud variation
+    const value = Math.max(200, intensity + clouds);
+    return value.toFixed(2);
   }
-  return (0 + Math.random() * 100).toFixed(2); // 0-100 lux (night)
+  return (Math.random() * 50).toFixed(2); // Night time
 }
 
 function generateRainStatus() {
-  return Math.random() > 0.8 ? 1 : 0; // 20% chance of rain
+  return Math.random() > 0.85 ? 1 : 0; // 15% chance of rain
 }
 
 // Connect to WebSocket server
@@ -198,6 +247,7 @@ connect();
 // Send sensor data periodically
 setInterval(() => {
   sendSensorData();
+  timeOffset += SEND_INTERVAL / 1000; // Increment time for simulation
 }, SEND_INTERVAL);
 
 // Handle graceful shutdown

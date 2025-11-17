@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
 import {
   LineChart,
   Line,
@@ -12,13 +13,43 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export function HistoricalChart({ data }) {
+const TIME_RANGES = [
+  { value: "24h", label: "24 Jam" },
+  { value: "7d", label: "7 Hari" },
+  { value: "30d", label: "30 Hari" },
+];
+
+export function HistoricalChart({ data, timeRange, onTimeRangeChange }) {
+  const getRangeTitle = (range) => {
+    const rangeMap = {
+      "24h": "24 Jam Terakhir",
+      "7d": "7 Hari Terakhir",
+      "30d": "30 Hari Terakhir",
+    };
+    return rangeMap[range] || "24 Jam Terakhir";
+  };
+
   return (
     <Card className="border-gray-200">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">
-          Grafik Historis (24 Jam Terakhir)
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold">
+            Grafik Historis ({getRangeTitle(timeRange)})
+          </CardTitle>
+          <div className="flex gap-2">
+            {TIME_RANGES.map((range) => (
+              <Button
+                key={range.value}
+                variant={timeRange === range.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => onTimeRangeChange(range.value)}
+                className="h-8 text-xs"
+              >
+                {range.label}
+              </Button>
+            ))}
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>

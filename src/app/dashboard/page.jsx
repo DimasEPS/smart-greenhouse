@@ -18,6 +18,7 @@ import { queryKeys } from "@/hooks/useQueries";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
+  const [timeRange, setTimeRange] = useState("24h");
 
   // React Query hooks
   const { data: latestReadings, isLoading: loadingReadings } =
@@ -29,8 +30,8 @@ export default function Dashboard() {
 
   const { data: historicalData, isLoading: loadingHistory } =
     useHistoricalReadings({
-      range: "24h",
-      limit: 100,
+      range: timeRange,
+      limit: timeRange === "24h" ? 100 : timeRange === "7d" ? 500 : 1000,
     });
 
   const sendCommand = useSendActuatorCommand();
@@ -120,46 +121,114 @@ export default function Dashboard() {
   const chartData = useMemo(() => {
     if (!historicalData || historicalData.length === 0) return [];
 
-    // Group readings by time (every 10 minutes)
+    // Determine grouping interval based on time range
+    const getGroupingInterval = (range) => {
+      switch (range) {
+        case "24h":
+          return 10; // 10 minutes
+        case "7d":
+          return 60; // 1 hour
+        case "30d":
+          return 240; // 4 hours
+        default:
+          return 10;
+      }
+    };
+
+    const intervalMinutes = getGroupingInterval(timeRange);
+
+    // Group readings by time interval with proper date handling
     const groupedByTime = {};
 
     historicalData.forEach((reading) => {
       const time = new Date(reading.recordedAt);
-      const minutes = Math.floor(time.getMinutes() / 10) * 10; // Round to nearest 10 min
-      const timeKey = `${time.getHours().toString().padStart(2, "0")}:${minutes
-        .toString()
-        .padStart(2, "0")}`;
+
+      // Create time key based on interval
+      let timeKey;
+      if (timeRange === "24h") {
+        // For 24h: show HH:MM
+        const minutes =
+          Math.floor(time.getMinutes() / intervalMinutes) * intervalMinutes;
+        timeKey = `${time.getHours().toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}`;
+      } else if (timeRange === "7d") {
+        // For 7d: show DD/MM HH:00
+        const hours = time.getHours();
+        timeKey = `${time.getDate().toString().padStart(2, "0")}/${(
+          time.getMonth() + 1
+        )
+          .toString()
+          .padStart(2, "0")} ${hours.toString().padStart(2, "0")}:00`;
+      } else {
+        // For 30d: show DD/MM
+        timeKey = `${time.getDate().toString().padStart(2, "0")}/${(
+          time.getMonth() + 1
+        )
+          .toString()
+          .padStart(2, "0")}`;
+      }
 
       if (!groupedByTime[timeKey]) {
         groupedByTime[timeKey] = {
           time: timeKey,
+          timestamp: time.getTime(), // Add timestamp for proper sorting
           suhu: null,
           kelembabanUdara: null,
           kelembabanTanah: null,
+          count: { suhu: 0, kelembabanUdara: 0, kelembabanTanah: 0 },
+          sum: { suhu: 0, kelembabanUdara: 0, kelembabanTanah: 0 },
         };
       }
 
-      // Take average or last value
+      // Accumulate values for averaging
       switch (reading.sensor.type) {
         case "temperature":
-          groupedByTime[timeKey].suhu = Math.round(reading.value * 10) / 10;
+          groupedByTime[timeKey].sum.suhu += reading.value;
+          groupedByTime[timeKey].count.suhu += 1;
           break;
         case "humidity":
-          groupedByTime[timeKey].kelembabanUdara =
-            Math.round(reading.value * 10) / 10;
+          groupedByTime[timeKey].sum.kelembabanUdara += reading.value;
+          groupedByTime[timeKey].count.kelembabanUdara += 1;
           break;
         case "soil":
-          groupedByTime[timeKey].kelembabanTanah =
-            Math.round(reading.value * 10) / 10;
+          groupedByTime[timeKey].sum.kelembabanTanah += reading.value;
+          groupedByTime[timeKey].count.kelembabanTanah += 1;
           break;
       }
     });
 
-    // Sort by time and return last 24 hours
-    return Object.values(groupedByTime)
-      .sort((a, b) => a.time.localeCompare(b.time))
-      .slice(-50); // Last 50 data points (~8 hours if every 10 min)
-  }, [historicalData]);
+    // Calculate averages and format data
+    const formattedData = Object.values(groupedByTime).map((group) => ({
+      time: group.time,
+      timestamp: group.timestamp,
+      suhu:
+        group.count.suhu > 0
+          ? Math.round((group.sum.suhu / group.count.suhu) * 10) / 10
+          : null,
+      kelembabanUdara:
+        group.count.kelembabanUdara > 0
+          ? Math.round(
+              (group.sum.kelembabanUdara / group.count.kelembabanUdara) * 10
+            ) / 10
+          : null,
+      kelembabanTanah:
+        group.count.kelembabanTanah > 0
+          ? Math.round(
+              (group.sum.kelembabanTanah / group.count.kelembabanTanah) * 10
+            ) / 10
+          : null,
+    }));
+
+    // Sort by timestamp and limit data points
+    const maxDataPoints =
+      timeRange === "24h" ? 50 : timeRange === "7d" ? 100 : 150;
+
+    return formattedData
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-maxDataPoints)
+      .map(({ timestamp, ...rest }) => rest); // Remove timestamp from final data
+  }, [historicalData, timeRange]);
 
   const getSoilMoistureStatus = (value) => {
     if (!value) return "-";
@@ -358,7 +427,11 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          <HistoricalChart data={chartData} />
+          <HistoricalChart
+            data={chartData}
+            timeRange={timeRange}
+            onTimeRangeChange={setTimeRange}
+          />
         )}
       </div>
     </div>
