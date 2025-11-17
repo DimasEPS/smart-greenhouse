@@ -10,16 +10,19 @@ Smart IoT-based greenhouse monitoring and control system dengan real-time sensor
 ## ✨ Features
 
 - **Real-time Sensor Monitoring**
+
   - Temperature, Humidity, Soil Moisture, Light Intensity, Rain Detection
   - Auto-refresh setiap 10 detik
   - WebSocket untuk update instant
 
 - **Actuator Control**
+
   - Roof/Glass control (Servo MG996R)
   - Water pump automation (Relay)
   - Manual override dari web dashboard
 
 - **Historical Data Charts**
+
   - Time range selector: 24 jam, 7 hari, 30 hari
   - Interactive line charts dengan Recharts
   - Data grouping yang smart berdasarkan rentang waktu
@@ -33,6 +36,7 @@ Smart IoT-based greenhouse monitoring and control system dengan real-time sensor
 ## 🛠️ Tech Stack
 
 **Frontend:**
+
 - Next.js 15.1.6 (App Router)
 - React Query (TanStack Query) 5.90.7
 - Recharts untuk data visualization
@@ -40,18 +44,20 @@ Smart IoT-based greenhouse monitoring and control system dengan real-time sensor
 - Lucide React icons
 
 **Backend:**
+
 - Next.js API Routes
 - Prisma ORM
 - MySQL Database
 - WebSocket Server (ws package)
 
 **IoT Simulation:**
+
 - Node.js simulator untuk testing
 - Realistic sensor data generation
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - MySQL/MariaDB
 - npm atau yarn
 
@@ -138,6 +144,7 @@ POST /api/actuators/:id/commands # Kirim command ke actuator
 Connect ke: `ws://localhost:3000/ws`
 
 **Message Types:**
+
 - `sensor_reading` - Data sensor dari ESP8266
 - `actuator_command` - Command dari dashboard ke ESP8266
 - `command_ack` - Acknowledgment dari ESP8266
@@ -161,5 +168,5 @@ MIT
 ## 👨‍💻 Author
 
 **Dimas EPS**
-- GitHub: [@DimasEPS](https://github.com/DimasEPS)
 
+- GitHub: [@DimasEPS](https://github.com/DimasEPS)
